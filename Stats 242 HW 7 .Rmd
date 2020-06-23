@@ -1,0 +1,184 @@
+---
+title: "HW7: Chapter 7, Sections 8.1 to 8.3"
+author: "Amelia Johnson"
+output: pdf_document
+---
+
+The code below just loads some packages and makes it so that enough digits are printed that you won't get confused by rounding errors.
+
+```{r, message = FALSE}
+library(dplyr) # functions like summarize
+library(ggplot2) # for making plots
+library(readr)
+library(data.table)
+options("pillar.sigfig" = 10) # print 10 significant digits in summarize output
+```
+
+## Crowdedness and GDP
+
+Danielle Vasilescu and Howard Wainer (*Chance*, 2005) used data from the United Nations Center for Human Settlements to investigate aspects of living conditions for several countries. Among the variables they looked at were the country's per capita gross domestic product (GDP, in dollars) and Crowdedness, defined as the average number of persons per room living in homes there.  Suppose we want to estimate the relationship between these variables, using GDP as the explanatory variable and Crowdedness as the response.
+
+The following code reads the data in:
+
+```{r}
+crowdedness <- read.csv("http://www.evanlray.com/data/sdm4/Crowdedness.csv")
+```
+
+#### (a) Create an appropriate plot of the data.
+
+```{r}
+crowdedness <- crowdedness %>% mutate(Crowd = as.numeric(Crowdedness))
+ggplot(data = crowdedness, aes(x = GDP, y = Crowd)) + geom_point()
+```
+
+
+#### (b) Find a transformation of the data so that the simple linear regression model conditions are as well satisfied as possible.  You do not need to show all of the steps in your process; you can just keep your final selected transformation.  (It's also fine if you want to keep all of the steps you took for your records.)  For your final selected transformation, please create 3 plots: (1) a scatter plot with the transformed variables, (2) a scatter plot of the residuals vs. the transformed explanatory variable, and (3) a histogram or density plot of the residuals.  No need to discuss these plots in this part.
+```{r}
+crowdedness <- crowdedness %>% mutate(sqrt_crowd = sqrt(Crowd)) %>% mutate(sqrt_GDP = sqrt(GDP))
+ggplot(data = crowdedness, aes(x = sqrt_GDP, y = sqrt_crowd)) + geom_point()
+```
+
+```{r}
+crowdedness <- crowdedness %>% mutate(sqrt_sqrt_crowd = sqrt(sqrt_crowd)) %>% mutate(sqrt_sqrt_GDP = sqrt(sqrt_GDP))
+ggplot(data = crowdedness, aes(x = sqrt_sqrt_GDP, y = sqrt_sqrt_crowd)) + geom_point()
+```
+
+#### (c) Discuss all of the linear regression model conditions based on your transformed variables.  For each condition, you should write a sentence or two describing whether or not the condition is satisfied and why.  If your conclusion is based on the plots you made for part (b), please clearly indicate which plot or plots you are looking at and describe a specific characteristic of that plot that your conclusion is based on.
+
+For all plot based observations, I am using the plot above, the sqrt, sqrt of both the x and y variables. 
+
+Linear: This condition is satisfied because the shape of the data does not show any obvious curve or other non-linear shape.
+
+Indepedent: This condition is satisfied because the observations are independent since each observation is a different counrty. It is possible that countries that are geographically or culturally similar sould have correlation in GDP or crowdedness. 
+
+Normal: This condition is satisfied because both the y and x variables seem to have a relatively even distribution of data points based on the plot above. 
+
+Equal Variance: This condition is satisfied because for each crowdedness value on the x axis in the plot above, the GDP values on the y axis have relatively equal spread. 
+
+Outliers: This condition is not satisfied because there seem to be at least three significant outliers to the bottom left of the linear fit. 
+
+#### (d) What are the interpretations of the estimated intercept and slope?  Please interpret the coefficient estimates in context on the scale of the *transformed* data.
+
+Mu = Beta_0 + Beta_1 * Crowd
+
+```{r}
+#make and summarise a linear model 
+crowd_fit <- lm(Crowd ~ GDP, data = crowdedness)
+summary(crowd_fit)
+```
+
+Mu = 27639.7 + (-1791.0) * Crowd
+
+#### (e) Find a set of three Bonferroni-adjusted confidence intervals with familywise confidence level of 95% for the median crowdedness in the "population" for countries with a GDP of $5000, $25000, and $45000.  Interpret your intervals in context.  You can use the predict function to generate the confidence intervals on the transformed scale, but you will have to then transform back to the original data scale.
+
+```{r}
+new.dat <- data.frame(GDP=5000)
+predict(crowd_fit, newdata = new.dat, interval = 'confidence')
+
+new.dat <- data.frame(GDP=25000)
+predict(crowd_fit, newdata = new.dat, interval = 'confidence')
+
+new.dat <- data.frame(GDP=45000)
+predict(crowd_fit, newdata = new.dat, interval = 'confidence')
+```
+
+GDP of $5000
+
+Among random samples, we expect 95% of the median crowdedness to fall between 8.590103 and 10.90341.
+
+GDP of $25000
+
+Among random samples, we expect 95% of the median crowdedness to fall between .977548 6.507801.
+
+GDP of $45000
+
+Among random samples, we expect 95% of the median crowdedness to fall between -1.683357 and 3.160537.
+
+
+## The Dramatic US Presidential Election of 2000 (Sleuth3 Exercise 8.25)
+
+Quote from the book:
+
+> The US presidential election of November 7, 2000 was one of the closest in history.  As returns were counted on election night it became clear that the outcome in the state of Florida would determine the next president. ... When the roughly 6 million Florida votes had been counted, Bush was shown to be leading by only 1,738, and the narrow margin triggered an automatic recount.  The recount, completed in the evening of November 9, showed Bush's lead to be less than 400.
+>
+> Meanwhile, angry Democratic voters in Palm Beach County complained that a confusing "butterly" lay-out ballot caused them to accidentally vote for the Reform party candidate Pat Buchanan instead of Gore.  The ballot, as illustrated in Display 8.22 [included in this repository, or knit the document to view], listed presidential candidates on both a left-hand and a right-hand page.  Voters were to register their vote by punching the circle corresponding to their choice, from the column of circles between the pages.  It was suspected that since Bush's name was listed first on the left-hand page, Bush voters likely selected the first circle. Since Gore's name was listed second on the left-hand side, many voters -- who already knew who they wished to vote for -- did not bother examining the right-hand side and consequently selected the second circle in the column: the one actually corresponding to Buchanan.  Two pieces of evidence supported this claim: Buchanan had an unusually high percentage of teh vote in that county, and an unusually large number of ballots (19,000) were discarded because voters had marked two circles (possibly by inadvertently voting for Buchanan and then trying to correct the mistake by then voting for Gore [though we don't have data to check this theory]).
+>
+> [We have] a data set containing the numbers of votes for Buchanan and Bush in all 67 counties in Florida. What evidence is there in the scatterplot of Display 8.24 that Buchanan received more votes than expected in Palm Beach County? Analyze the data without Palm Beach County results to [fit a model for] predicting Buchanan votes from Bush votes.  Obtain a 95% prediction interval for the number of Buchanan votes in Palm Beach from this result -- assuming the relationship is the same in this county as in the others.  If it is assumed that Buchanan's actual count contains a number of votes intended for Gore, what can be said about the likely size of this number from the prediction interval? (Consider transformation.)
+Here is a picture of the ballot (will show up in the knitted pdf):
+
+\includegraphics{sleuth3_display_8_22.png}
+
+The following code reads in the data:
+
+```{r}
+votes <- read.csv("http://www.evanlray.com/data/sleuth3/ex0825_2000_election.csv")
+```
+
+Please conduct the analysis outlined in the book's description.  You will need to use the `filter` function to create a copy of the data set without the observation for Palm Beach County.  When you have found a suitable transformation of the data, please create a scatter plot with the transformed variables, a scatter plot of the residuals vs. the transformed explanatory variable, and a histogram or density plot of the residuals.  Discuss whether the linear model conditions are satisfied and any limitations of this analysis (does this analysis prove that the high rate of voting for Buchanan in Palm Beach County was caused by the ballot?  Why or why not?).
+
+```{r}
+head(votes)
+```
+ 
+ Analyze the data without Palm Beach County results to [fit a model for] predicting Buchanan votes from Bush votes.  Obtain a 95% prediction interval for the number of Buchanan votes in Palm Beach from this result -- assuming the relationship is the same in this county as in the others.
+
+```{r}
+votes_orig <- votes
+votes <- votes %>% filter(County != "Palm Beach")
+```
+ 
+ Predict Buchanan votes from Bush votes:
+```{r}
+ggplot(data=votes, aes(x=Bush2000, y=Buchanan2000)) + 
+  geom_point() + geom_smooth()
+```
+The scatter plot shows that the data do not meet the linear shape condition, the equal vairnaces condition, and the normal distribution condition. Soth axis need to be scaled down with a transformation:
+ 
+```{r}
+votes <- votes %>% mutate(sqrt_bush = sqrt(Bush2000)) %>% mutate(sqrt_buch = sqrt(Buchanan2000))
+ggplot(data=votes, aes(x=sqrt_bush, y=sqrt_buch)) + geom_point()
+```
+We need to keep going down on both axis.
+
+```{r}
+votes <- votes %>% mutate(log_bush = log(Bush2000)) %>% mutate(log_buch = log(Buchanan2000))
+ggplot(data=votes, aes(x=log_bush, y=log_buch)) + geom_point() +geom_smooth()
+```
+Residuals plot:
+```{r}
+ggplot(votes_fit) + 
+  geom_point(aes(x=.fitted, y=.resid))
+```
+From this residuals plot, we see that there is equal variance after the transformation, and there are no trends.
+
+```{r}
+library(lindia)
+gg_reshist(votes_fit, bins = NULL)
+```
+We see from the residuals histogram that there is about a normal distribution of residuals centered at zero.
+
+After a log transsformation on both axis, our data satisfies the linear shape condition, the equal vairnaces condition, and then normal distribution condition which is shown in the scatter plot of the data as well as the residuals scatter plot and histogram. We can now fit a linear model:
+
+
+```{r}
+votes_fit <- lm(log_buch ~ log_bush, data = votes)
+summary(votes_fit)
+```
+From this linear model, we can find a prediction interval for the number of log_votes for Buchannan for any given county (which Palm Beach should match up with) predicted from Bush votes. 
+
+```{r}
+predictions <- data.table(predict(votes_fit, interval = 'confidence'))
+predictions
+
+predictions_palm_county <- data.table(
+  mean = mean(predictions$fit),
+  lower = mean(predictions$lwr),
+  upper = mean(predictions$upr))
+predictions_palm_county
+```
+```{r}
+votes_pb <- votes_orig %>% filter(County == "Palm Beach")
+mean(log(votes_pb$Buchanan2000))
+```
+
+So we see that the predicted number of log_votes for Buchannan for Palm Beach county is between 4.641597 and 4.927009	with 95% confidence. However, when we take the actual observed mean log_votes for Buchannan for Palm Beach county, we get 8.133587 which is well outside the predicted 95% confidence interval for Palm Beach county that we predicted assuming there was no voting interference by the ballot. There is a less than 5% probability of observing a value this extreme had the null been true. Thus, we see strong evidence to conlude that the high rate of voting for Buchanan in Palm Beach County was caused by the ballot. However, this analysis does not prove this conclusion because of the limitations of data specifying the specific political views of Palm Beach county, in which Bush and Buchanan's voter base may have overlapped more than in other counties due to other confounding factors. 
