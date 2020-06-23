@@ -4,8 +4,6 @@ author: "Amelia Johnson"
 output: pdf_document
 ---
 
-The code below just loads some packages and makes it so that enough digits are printed that you won't get confused by rounding errors.
-
 ```{r, message = FALSE}
 library(dplyr) # functions like summarize
 library(ggplot2) # for making plots
